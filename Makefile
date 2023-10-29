@@ -37,7 +37,7 @@ readme-lint:
 	markdownlint README.md
 
 # 🌈 All-in-one
-all: init plan build test lint readme-lint
+all: build test lint readme-lint
 	@echo "🎉 Done!"
 
-.PHONY: init plan build test lint readme-lint all
+.PHONY: build test lint readme-lint all
