@@ -44,8 +44,11 @@ var globalLogger *log.Entry // Singleton logger instance
 func GetLogger() *log.Entry {
 	if globalLogger == nil {
 		// Logger setup
-		log.SetFormatter(&log.JSONFormatter{})
-		log.SetReportCaller(true)
+		log.SetFormatter(&log.TextFormatter{
+			ForceColors:      true,
+			DisableTimestamp: true,
+		})
+		log.SetReportCaller(false)
 		log.SetOutput(os.Stdout)
 		globalLogger = log.WithFields(log.Fields{
 			"env":      os.Getenv("ENV"),

@@ -1,4 +1,8 @@
 # Makefile for running Terraform and Go commands
+# 🌍 Run app
+run:
+	@echo "Starting!"
+	go build . && go run .
 
 # 🌍 Terraform targets
 init:
@@ -16,6 +20,10 @@ apply:
 destroy:
 	@echo "💣 Destroying Terraform resources in /infrastructure..."
 	cd ./infrastructure && terraform destroy
+
+deploy:
+	@echo "💣 Deploying infrastructure."
+	cd ./infrastructure && terraform plan && terraform deploy
 
 # 🏗 Go build and test targets
 build:
