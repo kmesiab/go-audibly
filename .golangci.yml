@@ -1,0 +1,19 @@
+# .golangci.yml
+linters:
+  enable:
+    - govet
+    - goimports
+    - unused
+    - gosimple
+    - staticcheck
+    - gosec
+
+linters-settings:
+  govet:
+    check-shadowing: true
+
+  golint:
+    min-confidence: 0.8
+
+issues:
+  exclude-use-default: false

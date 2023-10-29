@@ -1,0 +1,44 @@
+name: 🎙️ Terraform Plan
+
+on:
+  push:
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: "Run Terraform"
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.x
+
+      # Run Terraform Init
+      - name: Terraform Init
+        run: |
+          cd ./infrastructure
+          terraform init -backend=false
+
+      # Run Terraform Validate
+      - name: Terraform Validate
+        run: |
+          cd ./infrastructure
+          terraform validate
+
+      # Run Terraform Plan
+      - name: Terraform Plan
+        run: |
+          cd ./infrastructure
+          terraform plan
