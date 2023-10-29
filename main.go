@@ -1,66 +1,41 @@
 package main
 
 import (
-	"path/filepath"
-	"strings"
-
-	"github.com/fsnotify/fsnotify"
+	"fmt"
+	"os"
 )
 
 const WatchPath = "./pre_transcode"
 
+var (
+	s3BucketName = "myp-pre-transcode" // overridden by environment variable
+)
+
 var AllowedAudioExtensions = []string{".mp3", ".wav", ".flac", ".aac", ".ogg"}
 
+func handleNewAudioFile(filename string) {
+	fullFileName := fmt.Sprintf("%s/%s", WatchPath, filename)
+	uploadToS3(fullFileName, s3BucketName, filename)
+}
+
 func main() {
-	Watch(WatchPath)
+	if !validConfig() {
+		PrepareLogMessagef("AWS configuration not found in environment").Error()
+		return
+	}
+
+	PrepareLogMessagef("\n👀 Watching folder: %s\n", WatchPath).Info()
+
+	Watch(WatchPath, handleNewAudioFile)
+
 }
 
-func Watch(path string) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		PrepareLogMessagef("Error creating watcher: %s", err.Error()).Error()
-	}
-	defer func(watcher *fsnotify.Watcher) {
-		e := watcher.Close()
-		if err != nil {
-			PrepareLogMessagef("Error closing watcher: %s", e.Error()).Error()
-		}
-	}(watcher)
+func validConfig() bool {
 
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event := <-watcher.Events:
-				if event.Op&fsnotify.Create == fsnotify.Create {
-					if IsAudioFile(event.Name, AllowedAudioExtensions) {
-						PrepareLogMessagef("New audio file detected: %s", event.Name).Info()
-					} else {
-						PrepareLogMessagef("Ignoring new file: %s", event.Name).Info()
-					}
-				}
-			case err = <-watcher.Errors:
-				PrepareLogMessagef("The fs watcher received an error: %s", err.Error()).Error()
-			}
-		}
-	}()
+	awsRegion := os.Getenv("AWS_REGION")
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	s3BucketName = os.Getenv("AWS_S3_BUCKET_NAME")
 
-	err = watcher.Add(WatchPath)
-	if err != nil {
-		PrepareLogMessagef("Error watching folder: %s", err.Error()).
-			Add("path", path).
-			Error()
-	}
-	<-done
-}
-
-// IsAudioFile checks if a file is an audio file based on its extension
-func IsAudioFile(filename string, allowedExtensions []string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	for _, audioExt := range allowedExtensions {
-		if ext == audioExt {
-			return true
-		}
-	}
-	return false
+	return !(accessKey == "" || secretKey == "" || s3BucketName == "" || awsRegion == "")
 }
