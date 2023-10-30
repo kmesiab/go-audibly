@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/transcribeservice"
 )
 
+const pollTimeout = 10 * time.Second
+
 type TranscriptCallback func(transcriptionJob *transcribeservice.TranscriptionJob)
 
 func CreateTranscriptionJob(
@@ -19,7 +21,6 @@ func CreateTranscriptionJob(
 	outputBucketName string,
 	callback TranscriptCallback,
 ) {
-
 	filename := filepath.Base(fullFileNameAndPath)
 	bucketPath := fmt.Sprintf("s3://%s/%s", inputBucketName, filename)
 	sess := session.Must(session.NewSession())
@@ -33,9 +34,9 @@ func CreateTranscriptionJob(
 	}
 
 	_, err := transcribeSvc.StartTranscriptionJob(input)
-
 	if err != nil {
 		PrepareLogMessagef("Failed to create transcription job: %s", err.Error()).Error()
+
 		return
 	}
 
@@ -51,24 +52,28 @@ func pollForTranscript(svc *transcribeservice.TranscribeService, jobName string,
 		output, err := svc.GetTranscriptionJob(input)
 		if err != nil {
 			PrepareLogMessagef("Failed to get transcription job: %s", err.Error()).Error()
+
 			return
 		}
 
 		status := *output.TranscriptionJob.TranscriptionJobStatus
-		if status == "COMPLETED" {
+		switch status {
+		case "COMPLETED":
 			PrepareLogMessagef("Transcription job %s completed.", jobName).Info()
 			callback(output.TranscriptionJob)
-			break
-		} else if status == "FAILED" {
+
+			return // break from loop
+		case "FAILED":
 			errMsg := *output.TranscriptionJob.FailureReason
 			PrepareLogMessagef("Transcription job %s failed.", jobName).
 				Add("reason", errMsg).
 				Error()
-			break
-		} else {
+
+			return // break from loop
+		default:
 			PrepareLogMessagef("Waiting for transcription job %s to complete.", jobName).Info()
 		}
 
-		time.Sleep(5 * time.Second) // Poll every 5 seconds
+		time.Sleep(pollTimeout) // Poll every 5 seconds
 	}
 }

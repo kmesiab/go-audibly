@@ -1,19 +1,83 @@
-# .golangci.yml
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+
 linters:
   enable:
-    - govet
+    - asciicheck
+    - bodyclose
+    - cyclop
+    - dogsled
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forcetypeassert
+    - funlen
+    - gci
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    # - goerr113
+    - gofmt
+    - gofumpt
+    - goheader
     - goimports
-    - unused
-    - gosimple
-    - staticcheck
+    - gomnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
     - gosec
+    - importas
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - tagliatelle
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+    # - wsl
 
-linters-settings:
-  govet:
-    check-shadowing: true
+  # Disabled linters
+  # disable:
 
-  golint:
-    min-confidence: 0.8
+  # Exclude some linters from running on test files.
+  disable-tests:
 
-issues:
-  exclude-use-default: false
+
+  # Linters which are not enabled by default
+  presets:
+    - bugs
+    - unused
+
+run:
+  timeout: 5m
+  build-tags:
+    - mytag
+
+  # Exit code when at least one issue was found, default is 1
+  issues-exit-code: 1

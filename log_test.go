@@ -1,24 +1,14 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetLogger(t *testing.T) {
-	err := os.Setenv("ENV", "test")
-	if err != nil {
-		PrepareLogMessagef("Error setting environment variable: %s", err.Error()).Error()
-		return
-	}
-
-	err = os.Setenv("APP_NAME", "go-audibly")
-	if err != nil {
-		PrepareLogMessagef("Error setting environment variable: %s", err.Error()).Error()
-		return
-	}
+	t.Setenv("ENV", "test")
+	t.Setenv("APP_NAME", "go-audibly")
 
 	logger := GetLogger()
 

@@ -40,7 +40,7 @@ import (
 
 var globalLogger *log.Entry // Singleton logger instance
 
-// GetLogger initializes and returns the global logger
+// GetLogger initializes and returns the global logger.
 func GetLogger() *log.Entry {
 	if globalLogger == nil {
 		// Logger setup
@@ -55,55 +55,57 @@ func GetLogger() *log.Entry {
 			"app_name": os.Getenv("APP_NAME"),
 		})
 	}
+
 	return globalLogger
 }
 
 // PrepareLogMessage creates a new LogMessage with a simple message.  The typical usage is:
 // lib.PrepareLogMessagef("Message %d", i).Info()
 // lib.PrepareLogMessage("This has custom fields").Add("custom_field", "value").Warn()
-// lib.PrepareLogMessage("This has request info").AddRequest(request).Add("custom_field", "value").Error()
+// lib.PrepareLogMessage("This has request info").AddRequest(request).Add("custom_field", "value").Error().
 func PrepareLogMessage(message string) *LogMessage {
 	return &LogMessage{Message: message, Fields: make(map[string]interface{})}
 }
 
-// PrepareLogMessagef creates a new LogMessage with formatted message
+// PrepareLogMessagef creates a new LogMessage with formatted message.
 func PrepareLogMessagef(format string, args ...interface{}) *LogMessage {
 	return &LogMessage{Message: fmt.Sprintf(format, args...), Fields: make(map[string]interface{})}
 }
 
-// LogMessage holds the log message and additional fields
+// LogMessage holds the log message and additional fields.
 type LogMessage struct {
 	Message string     `json:"message"`
 	Fields  log.Fields `json:"fields"`
 }
 
 // Add adds a key-value pair to the LogMessage's Fields
-// Chainable: Can be chained with other methods
+// Chainable: Can be chained with other methods.
 func (l LogMessage) Add(key string, value string) LogMessage {
 	l.Fields[key] = value
+
 	return l
 }
 
 // Info logs the message at Info level
-// Chainable: Can be chained with other methods
+// Chainable: Can be chained with other methods.
 func (l LogMessage) Info() {
 	GetLogger().WithFields(l.Fields).Info(l.Message)
 }
 
 // Debug logs the message at Debug level
-// Chainable: Can be chained with other methods
+// Chainable: Can be chained with other methods.
 func (l LogMessage) Debug() {
 	GetLogger().WithFields(l.Fields).Debug(l.Message)
 }
 
 // Warn logs the message at Warn level
-// Chainable: Can be chained with other methods
+// Chainable: Can be chained with other methods.
 func (l LogMessage) Warn() {
 	GetLogger().WithFields(l.Fields).Warn(l.Message)
 }
 
 // Error logs the message at Error level
-// Chainable: Can be chained with other methods
+// Chainable: Can be chained with other methods.
 func (l LogMessage) Error() {
 	GetLogger().WithFields(l.Fields).Error(l.Message)
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Netflix/go-env"
+	goenv "github.com/Netflix/go-env"
 )
 
 type Config struct {
@@ -16,21 +16,21 @@ type Config struct {
 
 type AWSConfig struct {
 	AwsRegion             string `env:"AWS_REGION"`
-	AwsAccessKeyId        string `env:"AWS_ACCESS_KEY_ID"`
+	AwsAccessKeyID        string `env:"AWS_ACCESS_KEY_ID"`
 	AwsSecretAccessKey    string `env:"AWS_SECRET_ACCESS_KEY"`
 	AwsS3InputBucketName  string `env:"AWS_S3_INPUT_BUCKET_NAME"`
 	AwsS3OutputBucketName string `env:"AWS_S3_OUTPUT_BUCKET_NAME"`
 }
 
 func GetConfig() (*Config, error) {
-	var config = &Config{}
-	_, err := env.UnmarshalFromEnviron(config)
-
+	config := &Config{}
+	_, err := goenv.UnmarshalFromEnviron(config)
 	if err != nil {
 		return nil, err
 	}
 
 	err = ValidateConfig(config)
+
 	return config, err
 }
 
@@ -41,5 +41,6 @@ func ValidateConfig(config *Config) error {
 			return fmt.Errorf("%s must not be empty", v.Type().Field(i).Name)
 		}
 	}
+
 	return nil
 }
