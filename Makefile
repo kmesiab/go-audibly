@@ -1,29 +1,22 @@
 # Makefile for running Terraform and Go commands
+
 # 🌍 Run app
 run:
 	@echo "Starting!"
-	go build . && go run .
+	source .env && go build . && go run .
 
 # 🌍 Terraform targets
 init:
 	@echo "🌱 Initializing Terraform in /infrastructure..."
-	cd ./infrastructure && terraform init
-
-plan:
-	@echo "🔍 Planning Terraform changes in /infrastructure..."
-	cd ./infrastructure && terraform plan
-
-apply:
-	@echo "✅ Applying Terraform changes in /infrastructure..."
-	cd ./infrastructure && terraform apply
-
-destroy:
-	@echo "💣 Destroying Terraform resources in /infrastructure..."
-	cd ./infrastructure && terraform destroy
+	source .env && cd ./infrastructure && terraform init
 
 deploy:
 	@echo "💣 Deploying infrastructure."
-	cd ./infrastructure && terraform plan && terraform deploy
+	source .env && cd ./infrastructure && terraform init && terraform plan -out=tfplan && terraform apply -auto-approve tfplan
+
+destroy:
+	@echo "💣 Destroying Terraform resources in /infrastructure..."
+	source .env && cd ./infrastructure && terraform destroy
 
 # 🏗 Go build and test targets
 build:
@@ -34,18 +27,13 @@ test:
 	@echo "🚀 Running Go tests..."
 	go test ./...
 
-# 🔍 Linting with golangci-lint
+# 🌈 All-in-one linting
 lint:
-	@echo "🔍 Running golangci-lint..."
-	golangci-lint run
+	@echo "🔍 Running all linters..."
+	golangci-lint run && markdownlint README.md
 
-# 📜 Lint README
-readme-lint:
-	@echo "📝 Linting README..."
-	markdownlint README.md
-
-# 🌈 All-in-one
-all: build test lint readme-lint
+# 🌈 All-in-one build, test, and lint
+all: build test lint
 	@echo "🎉 Done!"
 
-.PHONY: build test lint readme-lint all
+.PHONY: build test lint all

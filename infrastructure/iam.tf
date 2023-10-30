@@ -56,4 +56,26 @@ resource "aws_iam_user_policy_attachment" "user_policy_attachment" {
   policy_arn = aws_iam_policy.s3_full_access_policy.arn
 }
 
+resource "aws_iam_policy" "kms_generate_data_key" {
+  name        = "kms_generate_data_key"
+  description = "Allows KMS GenerateDataKey operations"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action   = "kms:GenerateDataKey",
+        Effect   = "Allow",
+        Resource = "arn:aws:kms:us-west-2:462498369025:key/75f3280b-4bf0-4668-a5ad-b1406b8ab380"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy_attachment" "attach_kms_generate_data_key" {
+  name       = "attach_kms_generate_data_key"
+  users      = ["go-audibly"]
+  policy_arn = aws_iam_policy.kms_generate_data_key.arn
+}
+
 
