@@ -11,31 +11,30 @@ import (
 )
 
 func uploadToS3(keyName string, config *Config) {
-
 	sess, err := session.NewSession(&aws.Config{
 		Region: &config.AwsRegion,
 		Credentials: credentials.NewStaticCredentials(
-			config.AwsAccessKeyId,
+			config.AwsAccessKeyID,
 			config.AwsSecretAccessKey,
 			"",
 		),
 	})
-
 	if err != nil {
 		PrepareLogMessagef("❌ Failed to create session: %s", err.Error()).Error()
+
 		return
 	}
 
 	filePathAndName := fmt.Sprintf("%s/%s", config.WatchFolder, keyName)
 	// #nosec // File set to absolute above
 	file, err := os.Open(filePathAndName)
-
 	if err != nil {
 		PrepareLogMessagef("❌ Failed to open file: %s", err.Error()).
 			Add("filepath", config.WatchFolder).
 			Add("filename", keyName).
 			Error()
 	}
+
 	defer func(file *os.File) {
 		e := file.Close()
 		if e != nil {
@@ -56,17 +55,13 @@ func uploadToS3(keyName string, config *Config) {
 	})
 
 	if err != nil {
-
 		PrepareLogMessagef("Failed to upload filer: %s", err.Error()).
 			Add("filename", file.Name()).
 			Error()
-
 	} else {
-
 		PrepareLogMessagef("File uploaded: %s", file.Name()).Info()
 		completedFileName := fmt.Sprintf("%s/%s", config.ProcessedAudioFolder, keyName)
 		err := os.Rename(filePathAndName, completedFileName)
-
 		if err != nil {
 			PrepareLogMessagef("Failed move file: %s", err.Error()).
 				Add("filename", file.Name()).

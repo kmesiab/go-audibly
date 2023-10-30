@@ -10,21 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	config *Config
-)
-
-var (
-	AllowedAudioExtensions = []string{".mp3"} // ".wav", ".flac", ".aac", ".ogg"
-)
+var AllowedAudioExtensions = []string{".mp3"} // ".wav", ".flac", ".aac", ".ogg"
 
 func main() {
-
-	var err error
-	config, err = GetConfig()
-
+	config, err := GetConfig()
 	if err != nil {
 		PrepareLogMessagef("❌ Invalid configuration: %s", err.Error()).Error()
+
 		return
 	}
 
@@ -36,20 +28,20 @@ func main() {
 
 	if err != nil {
 		PrepareLogMessagef("❌ Error watching folder: %s", err.Error()).Error()
+
 		return
 	}
-	PrepareLogMessagef("✅ Done").Info()
+
+	PrepareLogMessage("✅ Done").Info()
 }
 
 // handleNewAudioFile is called whenever a new audio file is detected in the watched directory.
 // It uploads the newly detected audio file to S3, and starts a transcription job.
 func handleNewAudioFile(filePathAndName string) {
-
-	var err error
-	config, err = GetConfig()
-
+	config, err := GetConfig()
 	if err != nil {
 		PrepareLogMessagef("❌ Invalid configuration: %s", err.Error()).Error()
+
 		return
 	}
 
@@ -79,8 +71,15 @@ func handleTranscriptionCallback(transcriptionJob *transcribeservice.Transcripti
 // The file is saved in the folder specified by config.TranscriptFolder.
 // It logs errors for file creation, writing, and closing actions.
 func SaveTranscription(fullFilePathAndName, contents *string) {
+	config, err := GetConfig()
+	if err != nil {
+		PrepareLogMessagef("❌ Invalid configuration: %s", err.Error()).Error()
+
+		return
+	}
 
 	absPath, err := filepath.Abs(*fullFilePathAndName)
+
 	fileName := filepath.Base(absPath)
 
 	if err != nil {
@@ -92,7 +91,6 @@ func SaveTranscription(fullFilePathAndName, contents *string) {
 	newFilePathAndName := fmt.Sprintf("%s/%s", config.TranscriptFolder, fileName)
 	// #nosec // File set to absolute above
 	file, err := os.Create(newFilePathAndName)
-
 	if err != nil {
 		PrepareLogMessagef("Failed to create file: %s", newFilePathAndName).Error()
 	}

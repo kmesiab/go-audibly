@@ -30,7 +30,7 @@ test:
 # 🌈 All-in-one linting
 lint:
 	@echo "🔍 Running all linters..."
-	golangci-lint run && markdownlint README.md
+	gofumpt -w . && golangci-lint run && markdownlint README.md
 
 # 🌈 All-in-one build, test, and lint
 all: build test lint

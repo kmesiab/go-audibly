@@ -29,14 +29,17 @@ type FileHandler func(string)
 // - done: A channel that will be closed when the function returns to signal completion.
 func handleEvents(ctx context.Context, watcher *fsnotify.Watcher, onNewAudioFile FileHandler, done chan struct{}) {
 	defer close(done)
+
 	for {
 		select {
 		case <-ctx.Done():
+
 			return
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
 			}
+
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				if IsAudioFile(event.Name, AllowedAudioExtensions) {
 					fmt.Printf("🎵 New audio file detected: %s 🎵\n", event.Name)
@@ -49,6 +52,7 @@ func handleEvents(ctx context.Context, watcher *fsnotify.Watcher, onNewAudioFile
 			if !ok {
 				return
 			}
+
 			fmt.Println("Error:", err)
 		}
 	}
@@ -66,9 +70,7 @@ func handleEvents(ctx context.Context, watcher *fsnotify.Watcher, onNewAudioFile
 // Returns:
 // - An error if the watcher encounters an issue, otherwise nil.
 func Watch(ctx context.Context, path string, onNewAudioFile FileHandler) error {
-
 	watcher, err := fsnotify.NewWatcher()
-
 	if err != nil {
 		return fmt.Errorf("error creating watcher: %w", err)
 	}
@@ -89,6 +91,7 @@ func Watch(ctx context.Context, path string, onNewAudioFile FileHandler) error {
 	}
 
 	<-done
+
 	return nil
 }
 
@@ -103,6 +106,7 @@ func ProcessExistingFiles(path string, allowedExtensions []string, onNewAudioFil
 	files, err := os.ReadDir(path)
 	if err != nil {
 		PrepareLogMessagef("Error reading directory: %s", err.Error()).Error()
+
 		return
 	}
 
@@ -122,5 +126,6 @@ func IsAudioFile(filename string, allowedExtensions []string) bool {
 			return true
 		}
 	}
+
 	return false
 }
