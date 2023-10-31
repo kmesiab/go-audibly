@@ -1,15 +1,15 @@
-# Existing S3 bucket for pre-transcode
-resource "aws_s3_bucket" "myp_pre_transcode" {
-  bucket = "myp-pre-transcode"
+# Existing S3 bucket for pre-transcribe
+resource "aws_s3_bucket" "myp_pre_transcribe" {
+  bucket = "myp-pre-transcribe"
   tags = {
     Name        = "myp"
     Environment = "dev"
   }
 }
 
-# Policy to allow Transcribe to access pre-transcode bucket
-resource "aws_s3_bucket_policy" "myp_pre_transcode_policy" {
-  bucket = aws_s3_bucket.myp_pre_transcode.id
+# Policy to allow Transcribe to access pre-transcribe bucket
+resource "aws_s3_bucket_policy" "myp_pre_transcribe_policy" {
+  bucket = aws_s3_bucket.myp_pre_transcribe.id
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -18,24 +18,24 @@ resource "aws_s3_bucket_policy" "myp_pre_transcode_policy" {
         Effect    = "Allow",
         Principal = { Service = "transcribe.amazonaws.com" },
         Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.myp_pre_transcode.arn}/*"
+        Resource  = "${aws_s3_bucket.myp_pre_transcribe.arn}/*"
       }
     ]
   })
 }
 
-# Existing S3 bucket for post-transcode
-resource "aws_s3_bucket" "myp_post_transcode" {
-  bucket = "myp-post-transcode"
+# Existing S3 bucket for post-transcribe
+resource "aws_s3_bucket" "myp_post_transcribe" {
+  bucket = "myp-post-transcribe"
   tags = {
     Name        = "myp"
     Environment = "dev"
   }
 }
 
-# Policy to allow Transcribe to access post-transcode bucket
-resource "aws_s3_bucket_policy" "myp_post_transcode_policy" {
-  bucket = aws_s3_bucket.myp_post_transcode.id
+# Policy to allow Transcribe to access post-transcribe bucket
+resource "aws_s3_bucket_policy" "myp_post_transcribe_policy" {
+  bucket = aws_s3_bucket.myp_post_transcribe.id
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -44,20 +44,20 @@ resource "aws_s3_bucket_policy" "myp_post_transcode_policy" {
         Effect    = "Allow",
         Principal = { Service = "transcribe.amazonaws.com" },
         Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.myp_post_transcode.arn}/*"
+        Resource  = "${aws_s3_bucket.myp_post_transcribe.arn}/*"
       }
     ]
   })
 }
 
-# Encryption for existing pre-transcode bucket
+# Encryption for existing pre-transcribe bucket
 resource "aws_kms_key" "s3key_pre" {
-  description             = "This key is used to encrypt bucket objects for pre-transcode"
+  description             = "This key is used to encrypt bucket objects for pre-transcribe"
   deletion_window_in_days = 10
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "pre_example" {
-  bucket = aws_s3_bucket.myp_pre_transcode.id
+  bucket = aws_s3_bucket.myp_pre_transcribe.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -67,14 +67,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "pre_example" {
   }
 }
 
-# Encryption for new post-transcode bucket
+# Encryption for new post-transcribe bucket
 resource "aws_kms_key" "s3key_post" {
-  description             = "This key is used to encrypt bucket objects for post-transcode"
+  description             = "This key is used to encrypt bucket objects for post-transcribe"
   deletion_window_in_days = 10
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "post_example" {
-  bucket = aws_s3_bucket.myp_post_transcode.id
+  bucket = aws_s3_bucket.myp_post_transcribe.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -84,17 +84,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "post_example" {
   }
 }
 
-# Versioning for pre-transcode bucket
+# Versioning for pre-transcribe bucket
 resource "aws_s3_bucket_versioning" "versioning_pre_example" {
-  bucket = aws_s3_bucket.myp_pre_transcode.id
+  bucket = aws_s3_bucket.myp_pre_transcribe.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-# Versioning for post-transcode bucket
+# Versioning for post-transcribe bucket
 resource "aws_s3_bucket_versioning" "versioning_post_example" {
-  bucket = aws_s3_bucket.myp_post_transcode.id
+  bucket = aws_s3_bucket.myp_post_transcribe.id
   versioning_configuration {
     status = "Enabled"
   }

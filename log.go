@@ -1,4 +1,4 @@
-// Package moatsdk provides a logging utility designed for AWS Lambda functions
+// Package provides a logging utility designed for AWS Lambda functions
 // and API Gateway. It offers a globally accessible logger configured to output
 // JSON formatted logs. The package also includes utility functions for adding
 // additional metadata fields to logs, either from custom fields or directly
