@@ -1,4 +1,3 @@
-
 resource "aws_iam_user" "my_user" {
   name = "go-audibly"
   tags = {
@@ -15,7 +14,7 @@ output "aws_access_key_id" {
 }
 
 output "aws_secret_access_key" {
-  value = aws_iam_access_key.my_access_key.secret
+  value     = aws_iam_access_key.my_access_key.secret
   sensitive = true
 }
 
@@ -61,12 +60,12 @@ resource "aws_iam_policy" "kms_generate_data_key" {
   description = "Allows KMS GenerateDataKey operations"
 
   policy = jsonencode({
-    Version = "2012-10-17",
+    Version   = "2012-10-17",
     Statement = [
       {
         Action   = "kms:GenerateDataKey",
         Effect   = "Allow",
-        Resource = "arn:aws:kms:us-west-2:462498369025:key/75f3280b-4bf0-4668-a5ad-b1406b8ab380"
+        Resource = "arn:aws:kms:us-west-2:462498369025:key/324128c9-b34e-43e4-be3f-d8882698f380"
       }
     ]
   })
@@ -74,7 +73,7 @@ resource "aws_iam_policy" "kms_generate_data_key" {
 
 resource "aws_iam_policy_attachment" "attach_kms_generate_data_key" {
   name       = "attach_kms_generate_data_key"
-  users      = ["go-audibly"]
+  users      = [aws_iam_user.my_user.name]
   policy_arn = aws_iam_policy.kms_generate_data_key.arn
 }
 

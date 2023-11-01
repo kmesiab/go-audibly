@@ -86,6 +86,12 @@ func (l LogMessage) Add(key string, value string) LogMessage {
 	return l
 }
 
+func (l LogMessage) AddError(err error) LogMessage {
+	l.Fields["error"] = err.Error()
+
+	return l
+}
+
 // Info logs the message at Info level
 // Chainable: Can be chained with other methods.
 func (l LogMessage) Info() {
@@ -95,13 +101,13 @@ func (l LogMessage) Info() {
 // Debug logs the message at Debug level
 // Chainable: Can be chained with other methods.
 func (l LogMessage) Debug() {
-	GetLogger().WithFields(l.Fields).Debug(l.Message)
+	GetLogger().WithFields(l.Fields).Debug("🐛 " + l.Message)
 }
 
 // Warn logs the message at Warn level
 // Chainable: Can be chained with other methods.
 func (l LogMessage) Warn() {
-	GetLogger().WithFields(l.Fields).Warn(l.Message)
+	GetLogger().WithFields(l.Fields).Warn("⚠️ " + l.Message)
 }
 
 // Error logs the message at Error level
