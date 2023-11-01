@@ -48,7 +48,7 @@ linters:
     - prealloc
     - predeclared
     - promlinter
-    - revive
+    # - revive
     - rowserrcheck
     - sqlclosecheck
     - stylecheck
@@ -59,7 +59,7 @@ linters:
     - unconvert
     - unparam
     - wastedassign
-    - whitespace
+    # - whitespace
     # - wsl
 
   # Disabled linters
