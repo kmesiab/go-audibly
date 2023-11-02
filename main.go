@@ -47,7 +47,8 @@ func main() {
 
 	PrepareLogMessagef("👀 Watching folder: %s", *config.WatchFolder).Info()
 
-	err = Watch(context.Background(), *config.WatchFolder, allowedAudioExtensions, NewAudioFileCallback)
+	// Note: You can use a cancelable or expiring context here
+	err = Watch(context.TODO(), *config.WatchFolder, allowedAudioExtensions, NewAudioFileCallback)
 
 	if err != nil {
 		PrepareLogMessagef("Error watching folder").
