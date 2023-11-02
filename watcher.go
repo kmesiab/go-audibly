@@ -82,7 +82,13 @@ func HandleFileEvents(
 //
 // Returns:
 // - An error if the watcher encounters an issue, otherwise nil.
-func Watch(ctx context.Context, path string, allowedExtension *[]string, onNewAudioFile FileHandler) error {
+func Watch(
+	ctx context.Context,
+	watchPath string,
+	allowedExtension *[]string,
+	onNewAudioFile FileHandler,
+) error {
+
 	var err error
 	var watcher *fsnotify.Watcher
 	doneWatching := make(chan struct{})
@@ -94,13 +100,15 @@ func Watch(ctx context.Context, path string, allowedExtension *[]string, onNewAu
 	defer func(watcher *fsnotify.Watcher) {
 		err := watcher.Close()
 		if err != nil {
-			PrepareLogMessagef("Failed to close watcher: %s", err.Error()).Error()
+			PrepareLogMessagef("Failed to close watcher").
+				AddError(err).
+				Error()
 		}
 	}(watcher)
 
 	go HandleFileEvents(ctx, watcher, allowedExtension, onNewAudioFile, doneWatching)
 
-	if err := watcher.Add(path); err != nil {
+	if err := watcher.Add(watchPath); err != nil {
 		return fmt.Errorf("error watching folder: %w", err)
 	}
 
