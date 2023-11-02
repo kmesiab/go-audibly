@@ -68,7 +68,6 @@ func ValidateConfig(config *Config) error {
 
 	// Check if it's a struct type
 	if v.Kind() != reflect.Struct {
-
 		return fmt.Errorf("config is not a struct")
 	}
 
@@ -77,7 +76,6 @@ func ValidateConfig(config *Config) error {
 
 	for i := 0; i < m; i++ {
 		if v.Field(i).String() == "" {
-
 			return fmt.Errorf("%s must not be empty", v.Type().Field(i).Name)
 		}
 	}

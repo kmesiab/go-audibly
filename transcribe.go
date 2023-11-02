@@ -6,50 +6,51 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/transcribeservice"
+	tsvc "github.com/aws/aws-sdk-go/service/transcribeservice"
 )
 
-const pollTimeout = 10 * time.Second
+const (
+	transcriptionResultSuccess = "COMPLETED"
+	transcriptionResultError   = "FAILED"
+	pollTimeout                = 10 * time.Second
+)
 
-type TranscriptCallback func(transcriptionJob *transcribeservice.TranscriptionJob)
+type TranscriptCallback func(
+	job *AudioTranscriptionJob,
+	transcriptionJob *tsvc.TranscriptionJob,
+)
 
-func CreateTranscriptionJob(
-	transcriptionJobName,
-	fullFileNameAndPath,
-	inputBucketName,
-	outputBucketName string,
-	callback TranscriptCallback,
-) {
-	filename := filepath.Base(fullFileNameAndPath)
-	bucketPath := fmt.Sprintf("s3://%s/%s", inputBucketName, filename)
-	sess := session.Must(session.NewSession())
-	transcribeSvc := transcribeservice.New(sess)
-	input := &transcribeservice.StartTranscriptionJobInput{
+func CreateTranscriptionJob(job *AudioTranscriptionJob, callback TranscriptCallback) error {
+	filename := filepath.Base(job.Filename)
+	bucketPath := fmt.Sprintf("s3://%s/%s", job.InputBucketName, filename)
+
+	input := &tsvc.StartTranscriptionJobInput{
 		LanguageCode:         aws.String("en-US"),
-		Media:                &transcribeservice.Media{MediaFileUri: aws.String(bucketPath)},
+		Media:                &tsvc.Media{MediaFileUri: aws.String(bucketPath)},
 		MediaFormat:          aws.String("mp3"),
-		TranscriptionJobName: aws.String(transcriptionJobName),
-		OutputBucketName:     aws.String(outputBucketName),
+		TranscriptionJobName: aws.String(job.Name),
+		OutputBucketName:     aws.String(job.OutputBucketName),
 	}
 
-	_, err := transcribeSvc.StartTranscriptionJob(input)
+	_, err := job.Service.StartTranscriptionJob(input)
 	if err != nil {
 		PrepareLogMessagef("Failed to create transcription job: %s", err.Error()).Error()
 
-		return
+		return err
 	}
 
-	go pollForTranscript(transcribeSvc, transcriptionJobName, callback)
+	go pollForTranscript(job, callback)
+
+	return nil
 }
 
-func pollForTranscript(svc *transcribeservice.TranscribeService, jobName string, callback TranscriptCallback) {
+func pollForTranscript(job *AudioTranscriptionJob, callback TranscriptCallback) {
 	for {
-		input := &transcribeservice.GetTranscriptionJobInput{
-			TranscriptionJobName: aws.String(jobName),
+		input := &tsvc.GetTranscriptionJobInput{
+			TranscriptionJobName: aws.String(job.Name),
 		}
 
-		output, err := svc.GetTranscriptionJob(input)
+		output, err := job.Service.GetTranscriptionJob(input)
 		if err != nil {
 			PrepareLogMessagef("Failed to get transcription job: %s", err.Error()).Error()
 
@@ -57,21 +58,29 @@ func pollForTranscript(svc *transcribeservice.TranscribeService, jobName string,
 		}
 
 		status := *output.TranscriptionJob.TranscriptionJobStatus
-		switch status {
-		case "COMPLETED":
-			PrepareLogMessagef("Transcription job %s completed.", jobName).Info()
-			callback(output.TranscriptionJob)
 
-			return // break from loop
-		case "FAILED":
-			errMsg := *output.TranscriptionJob.FailureReason
-			PrepareLogMessagef("Transcription job %s failed.", jobName).
-				Add("reason", errMsg).
+		switch status {
+		case transcriptionResultSuccess:
+			PrepareLogMessagef("Transcription job %s completed.", job.Name).
+				Add("file name", job.Filename).
+				Add("job name", job.Name).Info()
+
+			go callback(job, output.TranscriptionJob)
+
+			return
+		case transcriptionResultError:
+			PrepareLogMessagef("Transcription job %s failed.", job.Name).
+				Add("reason", *output.TranscriptionJob.FailureReason).
+				Add("file name", job.Filename).
+				Add("job name", job.Name).
 				Error()
 
-			return // break from loop
+			return
 		default:
-			PrepareLogMessagef("Waiting for transcription job %s to complete.", jobName).Info()
+			PrepareLogMessagef("Waiting for transcription job %s to complete.", job.Name).
+				Add("file name", job.Filename).
+				Add("job name", job.Name).
+				Info()
 		}
 
 		time.Sleep(pollTimeout) // Poll every 5 seconds
