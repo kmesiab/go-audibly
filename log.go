@@ -92,6 +92,15 @@ func (l LogMessage) AddError(err error) LogMessage {
 	return l
 }
 
+func (l LogMessage) AddTranscribeJob(job *AudioTranscriptionJob) LogMessage {
+	l.Fields["filename"] = job.Filename
+	l.Fields["job_name"] = job.Name
+	l.Fields["input_bucket_name"] = job.InputBucketName
+	l.Fields["output_bucket_name"] = job.OutputBucketName
+
+	return l
+}
+
 // Info logs the message at Info level
 // Chainable: Can be chained with other methods.
 func (l LogMessage) Info() {
