@@ -34,19 +34,23 @@ results are saved in another desktop folder.
 
 #### Description
 
-The .env file contains environment variables that are crucial for the application's configuration. These 
-variables are used to specify various settings like AWS configurations, folder paths for audio and transcript 
-files, etc.
+The .env file contains environment variables that are crucial for
+the application's configuration. These variables are used to specify
+various settings like AWS configurations, folder paths for audio and
+transcript files, etc.
 
 #### Variables
 
 - APP_NAME: The name of the application.
-- ENV: Specifies the environment in which the application is running. Set this according to your SDLC.
+- ENV: Specifies the environment in which the application is running.
+Set this according to your SDLC.
 - WATCH_FOLDER: The folder path to watch for new audio files.
-- TRANSCRIPT_FOLDER: The folder path where transcribed text files will be saved.
-- PROCESSED_AUDIO_FOLDER: The folder path where processed audio files will be saved.
-- AWS_S3_INPUT_BUCKET_NAME: AWS S3 bucket name for input (pre-transcoded) files.
-- AWS_S3_OUTPUT_BUCKET_NAME: AWS S3 bucket name for output (post-transcoded) files.
+- TRANSCRIPT_FOLDER: The folder path where transcribed text files will
+be saved.
+- PROCESSED_AUDIO_FOLDER: The folder path where processed audio files
+will be saved.
+- AWS_S3_INPUT_BUCKET_NAME: AWS S3 bucket name for input (audio) files.
+- AWS_S3_OUTPUT_BUCKET_NAME: AWS S3 bucket name for output (transcripts) files.
 - AWS_REGION: AWS region.
 - AWS_ACCESS_KEY_ID: Your AWS access key.
 - AWS_SECRET_ACCESS_KEY: Your AWS secret access key.
@@ -54,21 +58,27 @@ files, etc.
 ```bash
 export APP_NAME="go-audibly"
 export ENV="local"
-export WATCH_FOLDER="./pre_transcode"
-export TRANSCRIPT_FOLDER="./post_transcode"
-export PROCESSED_AUDIO_FOLDER="./post_transcode"
-export AWS_S3_INPUT_BUCKET_NAME="myp-pre-transcode"
-export AWS_S3_OUTPUT_BUCKET_NAME="myp-pre-transcode"
+
+export WATCH_FOLDER="./pre-processed"
+export PROCESSED_AUDIO_FOLDER="./post-processed"
+export TRANSCRIPT_FOLDER="./transcripts"
+
+export AWS_S3_INPUT_BUCKET_NAME="audio"
+export AWS_S3_OUTPUT_BUCKET_NAME="transcripts"
 export AWS_REGION="us-west-2"
+
 export AWS_ACCESS_KEY_ID="<SECRET>"
 export AWS_SECRET_ACCESS_KEY="<SECRET>"
 ```
-#### Usage
-Create a .env file at the root of your project and copy the above variables into it. 
-Make sure to replace the `<SECRET>` placeholders with your actual AWS credentials.
 
-⚠️ *Security Note: Never commit your .env file containing sensitive AWS credentials into 
-version control. Add .env to your .gitignore file.*
+#### Usage
+
+Create a .env file at the root of your project and copy the above variables
+into it. Make sure to replace the `<SECRET>` placeholders with your actual
+AWS credentials.
+
+⚠️ *Security Note: Never commit your .env file containing sensitive AWS
+credentials into version control. Add .env to your .gitignore file.*
 
 ### Clone the Repository
 
@@ -113,5 +123,6 @@ Use the `Makefile` for common tasks:
 - `make fumpt`: Run fumpt to format code
 - `make lint` : Run golangci-lint
 
-## Terraform :book:
-https://github.com/kmesiab/go-audibly/blob/main/infrastructure/README.md
+## Terraform 📘
+
+🔗 [Terraform Instructions](https://github.com/kmesiab/go-audibly/blob/main/infrastructure/README.md)
