@@ -116,11 +116,16 @@ func Watch(ctx context.Context, path string, allowedExtension *[]string, onNewAu
 // - path: The directory path to scan for existing audio files.
 // - allowedExtensions: A slice of string containing the allowed audio file extensions.
 // - onNewAudioFile: The function to call when a new audio file is found.
-func ProcessExistingFiles(path string, allowedAudioExtensions *[]string, onNewAudioFile FileHandler) error {
+func ProcessExistingFiles(
+	fso FileSystemInterface,
+	path string,
+	allowedAudioExtensions *[]string,
+	onNewAudioFile FileHandler,
+) error {
 	var err error
 	var files []os.DirEntry
 
-	if files, err = os.ReadDir(path); err != nil {
+	if files, err = fso.ReadDir(path); err != nil {
 		return fmt.Errorf("error reading directory: %w", err)
 	}
 

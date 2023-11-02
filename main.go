@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/transcribeservice"
 	"github.com/google/uuid"
 )
@@ -25,17 +26,24 @@ func main() {
 		return
 	}
 
-	PrepareLogMessagef("🔄 Processing any existing files in folder: %s", *config.WatchFolder).Info()
+	go func() {
+		PrepareLogMessagef("🔄 Processing any existing files").
+			Add("watch folder", *config.WatchFolder).
+			Info()
 
-	err = ProcessExistingFiles(*config.WatchFolder, allowedAudioExtensions, NewAudioFileCallback)
+		err = ProcessExistingFiles(
+			OSFileSystem{},         // Wrapper around the actual filesystem.
+			*config.WatchFolder,    // Path to the directory to scan for existing audio files.
+			allowedAudioExtensions, // Allowed audio file extensions.
+			NewAudioFileCallback,   // Function to call when a new audio file is detected.
+		)
 
-	if err != nil {
-		PrepareLogMessagef("Error processing existing files").
-			AddError(err).
-			Error()
-
-		return
-	}
+		if err != nil {
+			PrepareLogMessagef("Error processing existing files").
+				AddError(err).
+				Error()
+		}
+	}()
 
 	PrepareLogMessagef("👀 Watching folder: %s", *config.WatchFolder).Info()
 
@@ -58,6 +66,7 @@ func NewAudioFileCallback(filePathAndName string) {
 	config, err := GetConfig()
 	if err != nil {
 		PrepareLogMessagef("Invalid configuration").
+			Add("filename", filePathAndName).
 			AddError(err).
 			Error()
 
@@ -70,58 +79,68 @@ func NewAudioFileCallback(filePathAndName string) {
 	// Upload the audio file to S3
 	if err = uploadToS3(filename, config); err != nil {
 		PrepareLogMessagef("Failed to upload file to s3").
+			Add("filename", filename).
+			Add("abs_path", absPath).
 			AddError(err).
 			Error()
 
 		return
 	}
 
-	jobID := uuid.New().String()
+	jobName := uuid.New().String()
+	sess := session.Must(session.NewSession())
+
+	job := &AudioTranscriptionJob{
+		Name:             jobName,
+		Filename:         filename,
+		Service:          transcribeservice.New(sess),
+		InputBucketName:  *config.AwsS3InputBucketName,
+		OutputBucketName: *config.AwsS3OutputBucketName,
+	}
+
 	// Start the transcription job
-	CreateTranscriptionJob(
-		jobID,
-		absPath,
-		*config.AwsS3InputBucketName,
-		*config.AwsS3OutputBucketName,
-		TranscriptionCallback,
-	)
+	err = CreateTranscriptionJob(job, TranscriptionCallback)
+
+	if err != nil {
+		PrepareLogMessagef("Failed to create transcribe job").
+			AddError(err).
+			Add("absolute path", absPath).
+			Add("filename", filename).
+			Add("job ID", jobName).
+			Error()
+	}
 }
 
-func TranscriptionCallback(transcriptionJob *transcribeservice.TranscriptionJob) {
+func TranscriptionCallback(job *AudioTranscriptionJob, transcriptionJob *transcribeservice.TranscriptionJob) {
 	transcript := transcriptionJob.Transcript.String()
-	SaveTranscription(transcriptionJob.TranscriptionJobName, &transcript)
+	SaveTranscription(job, &transcript)
 }
 
 // SaveTranscription saves the transcription text to a file.
 // It takes the filename and the contents of the transcription as arguments.
 // The file is saved in the folder specified by config.TranscriptFolder.
 // It logs errors for file creation, writing, and closing actions.
-func SaveTranscription(fullFilePathAndName, contents *string) {
+func SaveTranscription(job *AudioTranscriptionJob, contents *string) {
 	config, err := GetConfig()
 	if err != nil {
 		PrepareLogMessagef("Invalid configuration").
+			AddTranscribeJob(job).
 			AddError(err).
 			Error()
 
 		return
 	}
 
-	absPath, err := filepath.Abs(*fullFilePathAndName)
-	fileName := filepath.Base(absPath)
-
-	if err != nil {
-		PrepareLogMessagef("Failed to get absolute path").
-			AddError(err).
-			Error()
-
-		return
-	}
-
+	fileName := filepath.Base(job.Filename)
 	newFilePathAndName := fmt.Sprintf("%s/%s", *config.TranscriptFolder, fileName)
+
 	// #nosec // File set to absolute above
 	file, err := os.Create(newFilePathAndName)
 	if err != nil {
-		PrepareLogMessagef("Failed to create file: %s", newFilePathAndName).Error()
+		PrepareLogMessagef("Failed to create file: %s", newFilePathAndName).
+			AddTranscribeJob(job).
+			AddError(err).
+			Error()
 
 		return
 	}
@@ -130,6 +149,7 @@ func SaveTranscription(fullFilePathAndName, contents *string) {
 		err = file.Close()
 		if err != nil {
 			PrepareLogMessagef("Error closing file").
+				AddTranscribeJob(job).
 				AddError(err).
 				Error()
 		}
@@ -138,15 +158,17 @@ func SaveTranscription(fullFilePathAndName, contents *string) {
 	_, err = file.WriteString(*contents)
 	if err != nil {
 		PrepareLogMessagef("Error writing to file").
+			AddTranscribeJob(job).
 			AddError(err).
 			Error()
 
 		return
 	}
 
-	err = os.Remove(*fullFilePathAndName)
+	err = os.Remove(job.Filename)
 	if err != nil {
 		PrepareLogMessagef("Error deleting audio file").
+			AddTranscribeJob(job).
 			AddError(err).
 			Error()
 
