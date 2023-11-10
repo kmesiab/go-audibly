@@ -10,15 +10,17 @@ import (
 )
 
 var (
-	once   = sync.Once{}
-	config *Config
+	once                   = sync.Once{}
+	config                 *Config
+	allowedAudioExtensions = []string{".mp3", ".wav", ".flac", ".aac", ".ogg"}
 )
 
 type Config struct {
 	AWSConfig
-	WatchFolder          *string `env:"WATCH_FOLDER"`
-	TranscriptFolder     *string `env:"TRANSCRIPT_FOLDER"`
-	ProcessedAudioFolder *string `env:"PROCESSED_AUDIO_FOLDER"`
+	WatchFolder            *string `env:"WATCH_FOLDER"`
+	TranscriptFolder       *string `env:"TRANSCRIPT_FOLDER"`
+	ProcessedAudioFolder   *string `env:"PROCESSED_AUDIO_FOLDER"`
+	AllowedAudioExtensions *[]string
 }
 
 type AWSConfig struct {
@@ -35,13 +37,14 @@ func GetConfig() (*Config, error) {
 		config = &Config{}
 		_, err := goenv.UnmarshalFromEnviron(config)
 		if err != nil {
-			PrepareLogMessagef("Failed to unmarshal config").
+			LogMessagef("Failed to unmarshal config").
 				AddError(err).
 				Error()
 
 			return
 		}
 
+		config.AllowedAudioExtensions = &allowedAudioExtensions
 		config.AwsCredentials = credentials.NewStaticCredentials(
 			*config.AwsAccessKeyID,
 			*config.AwsSecretAccessKey,

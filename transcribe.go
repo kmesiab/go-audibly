@@ -1,58 +1,114 @@
 package main
 
 import (
-	"fmt"
-	"path/filepath"
+	"errors"
+	"os"
+	"path"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	tsvc "github.com/aws/aws-sdk-go/service/transcribeservice"
+	"github.com/google/uuid"
 )
 
 const (
-	transcriptionResultSuccess = "COMPLETED"
-	transcriptionResultError   = "FAILED"
-	pollTimeout                = 10 * time.Second
+	transcriptionResultSuccess    = "COMPLETED"
+	transcriptionResultError      = "FAILED"
+	pollTimeout                   = 5 * time.Second
+	maxNumberOfSpeakersToIdentify = 5
 )
 
-type TranscriptCallback func(
-	job *AudioTranscriptionJob,
-	transcriptionJob *tsvc.TranscriptionJob,
-)
+func onTranscriptionJobDownloadFailed(jobName *string, err error) {
+	LogMessagef("Failed to download transcription file. Canceling context.").
+		AddError(err).
+		Add("job name", *jobName).
+		Error()
+}
 
-func CreateTranscriptionJob(job *AudioTranscriptionJob, callback TranscriptCallback) error {
-	filename := filepath.Base(job.Filename)
-	bucketPath := fmt.Sprintf("s3://%s/%s", job.InputBucketName, filename)
+func startTranscriptionJob(ctx AppContext, wg *sync.WaitGroup, filename, uploadLocation *string) {
+	jobName := path.Base(*filename) + "_" + uuid.New().String()
 
 	input := &tsvc.StartTranscriptionJobInput{
 		LanguageCode:         aws.String("en-US"),
-		Media:                &tsvc.Media{MediaFileUri: aws.String(bucketPath)},
-		MediaFormat:          aws.String("mp3"),
-		TranscriptionJobName: aws.String(job.Name),
-		OutputBucketName:     aws.String(job.OutputBucketName),
+		Media:                &tsvc.Media{MediaFileUri: aws.String(*uploadLocation)},
+		MediaFormat:          aws.String("mp3"), // TODO: Add support for other formats
+		TranscriptionJobName: aws.String(jobName),
+		OutputBucketName:     aws.String(*ctx.Config.AwsS3OutputBucketName),
+		Settings: &tsvc.Settings{
+			ShowSpeakerLabels: aws.Bool(true),
+			MaxSpeakerLabels:  aws.Int64(maxNumberOfSpeakersToIdentify), // Number of speakers to identify
+		},
 	}
 
-	_, err := job.Service.StartTranscriptionJob(input)
+	sess := session.Must(session.NewSession())
+	svc := tsvc.New(sess)
+
+	_, err := svc.StartTranscriptionJob(input)
 	if err != nil {
-		PrepareLogMessagef("Failed to create transcription job: %s", err.Error()).Error()
+		onTranscriptionJobFailed(&jobName, err)
 
-		return err
+		return
 	}
 
-	go pollForTranscript(job, callback)
+	wg.Add(1)
 
-	return nil
+	go func() {
+		defer wg.Done()
+		onTranscribeJobCreated(ctx, wg, &jobName, svc)
+	}()
 }
 
-func pollForTranscript(job *AudioTranscriptionJob, callback TranscriptCallback) {
-	for {
-		input := &tsvc.GetTranscriptionJobInput{
-			TranscriptionJobName: aws.String(job.Name),
-		}
+func downloadTranscriptionFile(ctx AppContext, job *tsvc.TranscriptionJob) {
+	filePath := *ctx.Config.TranscriptFolder + "/" + *job.TranscriptionJobName + ".json"
 
-		output, err := job.Service.GetTranscriptionJob(input)
+	file, err := os.Create(filePath)
+
+	defer func(file *os.File) {
+		err := file.Close()
 		if err != nil {
-			PrepareLogMessagef("Failed to get transcription job: %s", err.Error()).Error()
+			LogMessagef("Error closing file").
+				AddError(err).
+				Add("filename", filePath).
+				Error()
+		}
+	}(file)
+
+	if err != nil {
+		onTranscriptionJobDownloadFailed(job.TranscriptionJobName, err)
+
+		return
+	}
+
+	_, err = file.Write([]byte(job.String()))
+
+	if err != nil {
+		onTranscriptionJobDownloadFailed(job.TranscriptionJobName, err)
+
+		return
+	}
+
+	onTranscriptionJobDownloadSuccess(job)
+}
+
+func pollForTranscriptJob(
+	ctx AppContext,
+	wg *sync.WaitGroup,
+	jobName *string,
+	svc *tsvc.TranscribeService,
+	callback func(ctx AppContext, svc *tsvc.TranscriptionJob),
+) {
+	input := &tsvc.GetTranscriptionJobInput{
+		TranscriptionJobName: aws.String(*jobName),
+	}
+
+	for {
+
+		output, err := svc.GetTranscriptionJob(input)
+		if err != nil {
+			LogMessagef("Failed to get transcription job: %s", err.Error()).Error()
+			wg.Done()
 
 			return
 		}
@@ -60,29 +116,66 @@ func pollForTranscript(job *AudioTranscriptionJob, callback TranscriptCallback) 
 		status := *output.TranscriptionJob.TranscriptionJobStatus
 
 		switch status {
+
 		case transcriptionResultSuccess:
-			PrepareLogMessagef("Transcription job %s completed.", job.Name).
-				Add("file name", job.Filename).
-				Add("job name", job.Name).Info()
 
-			go callback(job, output.TranscriptionJob)
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+				callback(ctx, output.TranscriptionJob)
+			}()
 
 			return
+
 		case transcriptionResultError:
-			PrepareLogMessagef("Transcription job %s failed.", job.Name).
-				Add("reason", *output.TranscriptionJob.FailureReason).
-				Add("file name", job.Filename).
-				Add("job name", job.Name).
-				Error()
+
+			err := errors.New(*output.TranscriptionJob.FailureReason)
+			onTranscriptionJobFailed(jobName, err)
 
 			return
+
 		default:
-			PrepareLogMessagef("Waiting for transcription job %s to complete.", job.Name).
-				Add("file name", job.Filename).
-				Add("job name", job.Name).
-				Info()
+			go onTranscriptJobWaiting(jobName)
 		}
 
+		// TODO: Move this to config
 		time.Sleep(pollTimeout) // Poll every 5 seconds
 	}
+}
+
+func onTranscribeJobCreated(ctx AppContext, wg *sync.WaitGroup, jobName *string, svc *tsvc.TranscribeService) {
+	LogMessagef("Transcribe job created: %s", *jobName).Info()
+
+	wg.Add(1)
+
+	defer func() {
+		defer wg.Done()
+		go pollForTranscriptJob(ctx, wg, jobName, svc, onTranscriptionJobCompleted)
+	}()
+}
+
+func onTranscriptionJobCompleted(ctx AppContext, job *tsvc.TranscriptionJob) {
+	LogMessagef("Transcribe job completed: %s", *job.TranscriptionJobName).Info()
+	// TODO: use redaction url
+	go downloadTranscriptionFile(ctx, job)
+	// TODO: rename file on s3 bucket
+}
+
+func onTranscriptionJobFailed(jobName *string, err error) {
+	LogMessagef("Transcription job failed").
+		AddError(err).
+		Add("job name", *jobName).
+		Error()
+}
+
+func onTranscriptJobWaiting(jobName *string) {
+	LogMessagef("Waiting for transcription job: %s", *jobName).Info()
+}
+
+func onTranscriptionJobDownloadSuccess(job *tsvc.TranscriptionJob) {
+	LogMessagef("File successfully transcribed").
+		Add("job name", *job.TranscriptionJobName).
+		Add("transcript url", *job.Transcript.TranscriptFileUri).
+		Info()
 }

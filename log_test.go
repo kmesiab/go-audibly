@@ -24,8 +24,8 @@ func TestPrepareLogMessage(t *testing.T) {
 	assert.NotNil(t, msg.Fields)
 }
 
-func TestPrepareLogMessagef(t *testing.T) {
-	msg := PrepareLogMessagef("Formatted %s", "message")
+func TestLogMessagef(t *testing.T) {
+	msg := LogMessagef("Formatted %s", "message")
 
 	assert.Equal(t, "Formatted message", msg.Message)
 	assert.NotNil(t, msg.Fields)
@@ -36,5 +36,3 @@ func TestAdd(t *testing.T) {
 
 	assert.Equal(t, "value", msg.Fields["key"])
 }
-
-// For testing Info(), Debug(), Warn(), Error() you can mock the logger or capture stdout, but that's more complex.
