@@ -60,15 +60,15 @@ func GetLogger() *log.Entry {
 }
 
 // PrepareLogMessage creates a new LogMessage with a simple message.  The typical usage is:
-// lib.PrepareLogMessagef("Message %d", i).Info()
+// lib.LogMessagef("Message %d", i).Info()
 // lib.PrepareLogMessage("This has custom fields").Add("custom_field", "value").Warn()
 // lib.PrepareLogMessage("This has request info").AddRequest(request).Add("custom_field", "value").Error().
 func PrepareLogMessage(message string) *LogMessage {
 	return &LogMessage{Message: message, Fields: make(map[string]interface{})}
 }
 
-// PrepareLogMessagef creates a new LogMessage with formatted message.
-func PrepareLogMessagef(format string, args ...interface{}) *LogMessage {
+// LogMessagef creates a new LogMessage with formatted message.
+func LogMessagef(format string, args ...interface{}) *LogMessage {
 	return &LogMessage{Message: fmt.Sprintf(format, args...), Fields: make(map[string]interface{})}
 }
 
@@ -123,4 +123,10 @@ func (l LogMessage) Warn() {
 // Chainable: Can be chained with other methods.
 func (l LogMessage) Error() {
 	GetLogger().WithFields(l.Fields).Error(l.Message)
+}
+
+// Fatal logs the message at Fatal level
+// Chainable: Can be chained with other methods.
+func (l LogMessage) Fatal() {
+	GetLogger().WithFields(l.Fields).Fatal(l.Message)
 }
